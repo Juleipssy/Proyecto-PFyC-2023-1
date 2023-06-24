@@ -1,4 +1,6 @@
 import scala.util.Random
+import scala.collection.parallel._
+import scala.collection.parallel.CollectionConverters._
 
 package object riego {
 
@@ -45,10 +47,11 @@ package object riego {
     // con valores aleatorios entre 1 y long*2 para el tiempo
     // de supervivencia, entre 1 y long para el tiempo
     // de riego, y entre 1 y 4 para la prioridad
-    val v = Vector.fill(long){
+    val v = Vector.fill(long) {
       (random.nextInt(long * 2) + 1,
         random.nextInt(long) + 1,
-        random.nextInt(4) + 1) }
+        random.nextInt(4) + 1)
+    }
     v
   }
 
@@ -56,7 +59,7 @@ package object riego {
     // Crea una matriz de distancias para una finca
     // de long tablones, con valores aleatorios entre
     // 1 y long*3
-    val v = Vector.fill(long, long){
+    val v = Vector.fill(long, long) {
       random.nextInt(long * 3) + 1
     }
     Vector.tabulate(long, long)(
@@ -80,72 +83,91 @@ package object riego {
     f(i)._3
   }
 
-  /*
-  //          POR RESOLVER
 
-  /*         Funcion base          */
-  // 2.3.1 - Calculando el tiempo de inicio de Riego
+  ///////////////////////////////////////////////////////////////////
+  ////////////////////////////////RESOLVER//////////////////////////
+
+
   def tIR(f: Finca, pi: ProgRiego): TiempoInicioRiego = {
-    // Dada una finca f y una programación de riego pi,
-    // y f.length == n, tIR(f, pi) devuelve t: TiempoInicioRiego
-    // tal que t(i) es el tiempo en que inicia el riego del
-    // tablón i de la finca f según pi
-    // ...
+
+    def calcularTiempoInicio(actual: Int): Int = {
+      val indiceActual = pi.indexOf(actual) // El indice de mi tablon actual en la programacion de riego
+
+      if (actual == pi(0))
+        0
+      else
+        calcularTiempoInicio(pi(indiceActual - 1)) + treg(f, pi(indiceActual - 1))
+    }
+
+    val tiemposInicioRiego = for (i <- 0 until f.length) yield calcularTiempoInicio(i)
+
+    tiemposInicioRiego.toVector
   }
 
-  /*         Funciones secuenciales          */
-  // 2.3.2 Calculando costos - costoRiegoTablon ---- (* Viernes 16 - Junio)
   def costoRiegoTablon(i: Int, f: Finca, pi: ProgRiego): Int = {
-    // devuelve el costo de regar el tablon i de la finca f
-    // con la programación pi
+    val costoRiego = (ti: Int) => {
+      if (tsup(f, i) - treg(f, i) >= ti)//tsup = tiempo de supervivencia
+        tsup(f, i) - (ti + treg(f, i))//treg =tiempo de regado
+      else
+        prio(f, i) * ((ti + treg(f, i)) - tsup(f, i))//prio=prioridad
+    }
+
+    costoRiego(tIR(f, pi)(i))
   }
 
-  // 2.3.2 Calculando costos - costoRiegoFinca ---- (* Viernes 16 - Junio)
   def costoRiegoFinca(f: Finca, pi: ProgRiego): Int = {
-    // devuelve el costo total de regar una finca dada
-    // una programación de riego dada
-    // ...
+    val costos = for (i <- 0 until f.length) yield costoRiegoTablon(i, f, pi)
+
+    def sumarElementos(vector: Vector[Int]): Int = vector match {
+      case Vector() => 0
+      case head +: tail => head + sumarElementos(tail)
+    }
+
+    sumarElementos(costos.toVector)
   }
 
-  // 2.3.2 Calculando costos - costoMovilidad ---- (* Viernes 16 - Junio)
+
   def costoMovilidad(f: Finca, pi: ProgRiego, d: Distancia): Int = {
-    // ...
+    val n = pi.length // La llamamos como se llama en la formalizacion
+    val costos = for (j <- 0 until n - 1) yield d(pi(j))(pi(j + 1))
+
+    def sumarElementos(vector: Vector[Int]): Int = vector match {
+      case Vector() => 0
+      case head +: tail => head + sumarElementos(tail)
+    }
+
+    sumarElementos(costos.toVector)
   }
 
-  // 2.3.3 Generando programaciones de Riego ---- (* Viernes 16 - Junio)
-  def generarProgramacionesRiego(f: Finca): Vector[ProgRiego] = {
-    // Dada una finca de tablones, devuelve todas las posibles programaciones de riego de la finca
-    // ...
+
+  def generarProgramacionesRiego(f: Finca):Vector[ProgRiego] = {
+    // Dada una f i n c a de n t a b l o n e s , d e v u e l v e t o d a s l a s
+    // p o s i b l e s p ro g rama c ion es de r i e g o de l a f i n c a
+
   }
 
-  // 2.3.3 Generando una programación de Riego óptimo ---- (* Viernes 23 - Junio)
   def ProgramacionRiegoOptimo(f: Finca, d: Distancia): (ProgRiego, Int) = {
-    // Dada una finca devuelve la programación de riego óptima
-    // ...
+    // Dada una f i n c a d e v u e l v e l a p rog ramac ion
+    // de r i e g o opt ima
+
   }
 
-  /*         Versiones paralelas          */
-  // 2.4.1 Paralelizando el cálculo de los costos - Costo de Riego ---- (* Viernes 23 - Junio)
+
+  ////////////////////////PARALELIZACION DE DATOS///////////////////////////////
+
+
+
   def costoRiegoFincaPar(f: Finca, pi: ProgRiego): Int = {
-    // Devuelve el costo total de regar una finca dada una programación de riego pi
-    // ...
+    val costosPar = (0 until f.length).par.map(i => costoRiegoTablon(i, f, pi))
+    costosPar.sum
   }
 
-  // 2.4.1 Paralelizando el cálculo de los costos - Costo de movilidad ---- (* Viernes 23 - Junio)
   def costoMovilidadPar(f: Finca, pi: ProgRiego, d: Distancia): Int = {
-    // ...
+    val n = pi.length
+    val costosPar = (0 until n - 1).par.map(j => d(pi(j))(pi(j + 1)))//se toma el indice del siguiente tablon
+    costosPar.sum
   }
 
-  // 2.4.2 Paralelizando la programación de riego óptimo ---- (* Viernes 23 - Junio)
-  def generarProgramacionesRiegoPar(f: Finca): Vector[ProgRiego] = {
-    // Paraleliza el calculo de la versión secuencial
-    // Devuelve el Vector de ProgRiego generado
-  }
 
-  // 2.4.3 Paralelizando la programación de riego óptimo ---- (* Viernes 23 - Junio)
-  def ProgramacionRiegoOptimoPar(f: Finca, d: Distancia): (ProgRiego, Int) = {
-    // Dada una finca devuelve la programación de riego óptima
-    // ...
-  }
-  */
 }
+
