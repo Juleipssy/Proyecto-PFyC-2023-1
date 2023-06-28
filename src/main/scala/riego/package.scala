@@ -84,21 +84,19 @@ package object riego {
   }
 
 
-  ///////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////// El indice de mi tablón actual en la programacion de riego
   ////////////////////////////////RESOLVER//////////////////////////
 
 
   def tIR(f: Finca, pi: ProgRiego): TiempoInicioRiego = {
 
     def calcularTiempoInicio(actual: Int): Int = {
-      val indiceActual = pi.indexOf(actual) // El indice de mi tablon actual en la programacion de riego
-
+      val indiceActual = pi.indexOf(actual)
       if (actual == pi(0))
         0
       else
         calcularTiempoInicio(pi(indiceActual - 1)) + treg(f, pi(indiceActual - 1))
     }
-
     val tiemposInicioRiego = for (i <- 0 until f.length) yield calcularTiempoInicio(i)
 
     tiemposInicioRiego.toVector
@@ -106,20 +104,25 @@ package object riego {
 
   def costoRiegoTablon(i: Int, f: Finca, pi: ProgRiego): Int = {
     val costoRiego = (ti: Int) => {
-      if (tsup(f, i) - treg(f, i) >= ti)//tsup = tiempo de supervivencia
-        tsup(f, i) - (ti + treg(f, i))//treg =tiempo de regado
+      if (tsup(f, i) - treg(f, i) >= ti)
+        tsup(f, i) - (ti + treg(f, i))
+
       else
-        prio(f, i) * ((ti + treg(f, i)) - tsup(f, i))//prio=prioridad
+        prio(f, i) * ((ti + treg(f, i)) - tsup(f, i))
     }
 
     costoRiego(tIR(f, pi)(i))
   }
 
+
   def costoRiegoFinca(f: Finca, pi: ProgRiego): Int = {
+
     val costos = for (i <- 0 until f.length) yield costoRiegoTablon(i, f, pi)
 
     def sumarElementos(vector: Vector[Int]): Int = vector match {
+
       case Vector() => 0
+
       case head +: tail => head + sumarElementos(tail)
     }
 
@@ -128,11 +131,15 @@ package object riego {
 
 
   def costoMovilidad(f: Finca, pi: ProgRiego, d: Distancia): Int = {
-    val n = pi.length // La llamamos como se llama en la formalizacion
-    val costos = for (j <- 0 until n - 1) yield d(pi(j))(pi(j + 1))
+
+    val n = pi.length
+
+    val costos = for (j <- 0 until n - 2) yield d(pi(j))(pi(j + 1))
 
     def sumarElementos(vector: Vector[Int]): Int = vector match {
+
       case Vector() => 0
+
       case head +: tail => head + sumarElementos(tail)
     }
 
